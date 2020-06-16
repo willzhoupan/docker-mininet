@@ -86,7 +86,7 @@ class Docker ( Host ):
 
         # setup docker client
         self.dcli = docker.APIClient(base_url='unix://var/run/docker.sock')
-        #self.dcli = docker.from_env().api
+        #self.dcli = docker.from_env()
 
         # pull image if it does not exist
         self._check_image_exists(dimage, True)
@@ -109,6 +109,7 @@ class Docker ( Host ):
             mem_limit=self.resources.get('mem_limit'),
             cpuset_cpus=self.resources.get('cpuset_cpus'),
             dns=self.dns,
+            runtime='nvidia'#add by will
         )
 
         if kwargs.get("rm", False):
@@ -118,7 +119,7 @@ class Docker ( Host ):
                     if "%s.%s" % (self.dnameprefix, name) in container_name:
                         self.dcli.remove_container(container="%s.%s" % (self.dnameprefix, name), force=True)
                         break
-
+        
         # create new docker container
         self.dc = self.dcli.create_container(
             name="%s.%s" % (self.dnameprefix, name),
@@ -138,6 +139,7 @@ class Docker ( Host ):
 
         # start the container
         self.dcli.start(self.dc)
+
         debug("Docker container %s started\n" % name)
 
         # fetch information about new container
@@ -228,8 +230,13 @@ class Docker ( Host ):
         # bash -i: force interactive
         # -s: pass $* to shell, and make process easy to find in ps
         # prompt is set to sentinel chr( 127 )
+        
         cmd = [ 'docker', 'exec', '-it',  '%s.%s' % ( self.dnameprefix, self.name ), 'env', 'PS1=' + chr( 127 ),
                 'bash', '--norc', '-is', 'mininet:' + self.name ]
+        '''
+        cmd = [ 'nvidia-docker', 'run', '-it',  '%s.%s' % ( self.dnameprefix, self.name ), 'env', 'PS1=' + chr( 127 ),
+                'bash', '--norc', '-is', 'mininet:' + self.name ]
+        '''
         # Spawn a shell subprocess in a pseudo-tty, to disable buffering
         # in the subprocess and insulate it from signals (e.g. SIGINT)
         # received by the parent
